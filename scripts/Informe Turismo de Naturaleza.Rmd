@@ -1,0 +1,383 @@
+---
+title: "Informe Turismo de Naturaleza"
+date: "11/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(datapasta)
+library(janitor)
+library(gt) # Easily Create Presentation-Ready Display Tables, CRAN v0.2.2
+library(extrafont) # Tools for using fonts, CRAN v0.17 # Tools for using fonts, CRAN v0.17
+library(hrbrthemes) # Additional Themes, Theme Components and Utilities for 'ggplot2', CRAN v0.8.0
+library(ggtext)
+library(tidytext)
+library(webshot)
+`%dis%` = Negate(`%in%`)
+```
+
+
+```{r}
+library(datapasta)
+
+# Tabla encabezado
+anio <- 2017:2019
+turismo_total <- c(2692085, 3163961, 3431860)
+turismo_naturaleza <- c(631762, 702703, 1061239)
+
+# Tabla general
+b_naturaleza <- tibble::tribble(
+                ~indicador,                          ~categorias, ~TURISMO.NATURALEZA, ~TOTAL.TURISTAS,
+               "trimestre",                        "I Trimestre",                5661,          921590,
+                        NA,                       "II Trimestre",                4411,          766719,
+                        NA,                      "III Trimestre",                5517,          821410,
+                        NA,                       "IV Trimestre",                5353,          922141,
+         "pais_residencia",                            "Bolivia",                 216,           67488,
+                        NA,                             "Brasil",                4836,          844318,
+                        NA,                              "Chile",                3150,          499615,
+                        NA,                           "Paraguay",                 296,           76811,
+                        NA,                            "Uruguay",                 797,          305702,
+                        NA,                    "EE,UU, y Canadá",                2367,          355603,
+                        NA,                      "Resto América",                3709,          467484,
+                        NA,                             "Europa",                4901,          621908,
+                        NA,                    "Resto del mundo",                 670,          192931,
+   "principal_alojamiento",        "Casa de familiares o amigos",                3932,          880587,
+                        NA,           "Hotel 1, 2 y 3 estrellas",                4453,          681274,
+                        NA,              "Hotel 4 y 5 estrellas",                7049,         1222078,
+                        NA,                               "Otro",                5508,          647921,
+            "motivo_viaje",         "Vacaciones/ocio/recreación",               15782,         1746623,
+                        NA,       "Visita a familiares o amigos",                3530,          845547,
+                        NA,    "Negocios, Congreso, Conferencia",                 942,          639195,
+                        NA,                      "Otros motivos",                 688,          200495,
+       "paquete_turistico",              "Sin paquete turístico",               17253,         2962609,
+                        NA,              "Con paquete turístico",                3689,          469251,
+  "calificacion_servicios",                 "Transporte interno",                 411,             400,
+                        NA,                        "Alojamiento",                 427,             422,
+                        NA,            "Servicio de gastronomía",                 443,             435,
+                        NA,   "Información turística de destino",                 423,             411,
+                        NA,                            "Higiene",                 400,             384,
+                        NA,                          "Seguridad",                 425,             408,
+                        NA,                 "Estadía en general",                 456,             443,
+                        NA,                  "In out aeropuerto",                 418,             410,
+     "naturaleza_decision",              "Relación pcio/calidad",                  NA,              NA,
+                        NA, "Diversidad de naturaleza y paisaje",                  NA,              NA,
+                        NA,                 "Valores culturales",                  NA,              NA,
+                        NA,                         "Proximidad",                  NA,              NA,
+                        NA,                  "País gay friendly",                  NA,              NA,
+                        NA,            "Actividades específicas",                  NA,              NA,
+                        NA,                     "Familia/amigos",                  NA,              NA,
+                        NA,                              "Otros",                  NA,              NA,
+                 "estadia", "Estadía promedio en la argentina (en noches):",     1421,            1198,
+                   "gasto",                  "Gasto por turista (en US$)",              115803,           92571,
+                        NA,              "Gasto promedio diario (en US$)",                8150,            7728
+  ) %>% 
+  fill(indicador) %>% 
+  clean_names()
+
+b_calificacion <- b_naturaleza %>% 
+  filter(indicador == "calificacion_servicios") %>% 
+  mutate(turismo_naturaleza = turismo_naturaleza / 100,
+         total_turistas = total_turistas / 100)
+
+b_gasto_estadia <- b_naturaleza %>% 
+  filter(indicador %in% c("estadia", "gasto")) %>% 
+  mutate(turismo_naturaleza = turismo_naturaleza / 100,
+         total_turistas = total_turistas / 100)
+
+b_naturaleza <- b_naturaleza %>% 
+  filter(indicador %dis% c("calificacion_servicios", "gasto", "estadia") & indicador != "naturaleza_decision") %>% 
+  group_by(indicador) %>% 
+  mutate(porcentaje_total = total_turistas / sum(total_turistas),
+         porcentaje_naturaleza = turismo_naturaleza / sum(turismo_naturaleza))
+  
+
+# b_naturaleza[24,2] <- 'la diversidad de la naturaleza y los paisajes'
+# b_naturaleza[24,5] <- b_naturaleza[24,4] / turismo_total[3]
+# b_naturaleza[24,6] <- b_naturaleza[24,3] / 19070
+
+# Tabla aspectos
+b_aspectos <- tibble::tribble(
+                                 ~indicador,                          ~categorias, ~porcentaje_naturaleza, ~porcentaje_total,
+                      "naturaleza_decision",            "Relación precio/calidad",                "0,208",           "0,203",
+                                         NA, "Diversidad de naturaleza y paisaje",                "0,456",           "0,301",
+                                         NA,                 "Valores culturales",                "0,452",           "0,508",
+                                         NA,                         "Proximidad",                "0,151",           "0,202",
+                                         NA,                  "País gay friendly",                "0,006",           "0,005",
+                                         NA,            "Actividades específicas",                "0,122",           "0,113",
+                                         NA,                     "Familia/amigos",                "0,111",           "0,112",
+                                         NA,                              "Otros",                "0,100",           "0,074"
+                      ) %>% 
+  fill(indicador) %>% 
+  mutate(porcentaje_total = as.numeric(str_replace(porcentaje_total, ",", ".")),
+         porcentaje_naturaleza = as.numeric(str_replace(porcentaje_naturaleza, ",", "."))) %>% 
+  mutate(orden_orig = rank(-porcentaje_naturaleza),
+         orden = case_when(porcentaje_naturaleza < porcentaje_naturaleza[categorias == "Otros"] ~ 
+                             orden_orig - 1,
+                           porcentaje_naturaleza == porcentaje_naturaleza[categorias == "Otros"] ~ 
+                             orden_orig + 1,
+                           porcentaje_naturaleza > porcentaje_naturaleza[categorias == "Otros"] ~ 
+                             orden_orig)) %>% 
+  arrange(orden)
+
+b_naturaleza <- bind_rows(b_naturaleza, b_aspectos)
+```
+
+
+```{r}
+# Tabla 1
+tabla1 <- b_naturaleza %>% 
+  mutate(indicador = case_when(
+    indicador == "trimestre" ~ "Trimestre",
+    indicador == "pais_residencia" ~ "País de residencia",
+    indicador == "principal_alojamiento" ~ "Principal tipo de alojamiento utilizado",
+    indicador == "motivo_viaje" ~ "Principal motivo de viaje",
+    indicador == "paquete_turistico" ~ "Utilización de paquete turístico",
+    indicador == "naturaleza_decision" ~ "Aspectos que influyeron en la decisión de viajar a la Argentina (calculada en base a los que viajaron por vacaciones, estudio, salud o compras)",
+    TRUE ~ indicador)) %>% 
+  select(indicador, categorias, porcentaje_total, porcentaje_naturaleza) %>% 
+  gt(
+    rowname_col = "categorias"
+    ) %>% 
+  cols_label(
+    porcentaje_total = md("**Total Turistas**") ,             
+    porcentaje_naturaleza = md("**Turismo de Naturaleza**"),
+  ) %>% 
+  fmt_percent(columns = c(3,4), decimals = 1, dec_mark = ",") %>% 
+  cols_align(
+    align = "center",
+    columns = vars(porcentaje_total, porcentaje_naturaleza
+    ))  %>% 
+  opt_table_font(
+    font = list(
+      google_font(name = "Encode Sans")
+    )
+  ) %>%
+  tab_header(
+    subtitle = md("**Aerop. Intern de  Ezeiza, Aeroparque J. Newbery, Aerop. Intern. de Córdoba, Aerop. Intern de Mendoza, Paso Internacional Cristo Redentor y Terminal de Buquebús en la Ciudad Autónoma de Buenos Aires, Año 2019.**"),
+    title = toupper("Perfil del turismo de naturaleza.")
+  ) %>%
+  tab_source_note(
+    source_note = md(
+      "**Fuente:** Dirección Nacional de Mercados y Estadística en base a la Encuesta de Turismo Internacional (ETI).")
+  ) %>%
+  tab_stubhead(label = md("**Variable**")) %>%
+  tab_style(
+    style = cell_text(weight =  "bold"),
+    locations = cells_row_groups()
+  )
+htmltools::save_html(html = tabla1, file = "tabla1_ETI.html")
+
+webshot::webshot("tabla1_ETI.html", file="out.png", delay=2)
+```
+
+```{r}
+# Tabla 2
+tabla2 <- b_calificacion %>% 
+  select(categorias, total_turistas, turismo_naturaleza) %>% 
+  gt(
+    rowname_col = "categorias"
+    ) %>% 
+  cols_label(
+    total_turistas = md("**Total Turistas**") ,             
+    turismo_naturaleza = md("**Turismo de Naturaleza**"),
+  ) %>% 
+  fmt_number(columns = c(2,3), decimals = 1, dec_mark = ",") %>% 
+  cols_align(
+    align = "center",
+    columns = vars(total_turistas, turismo_naturaleza
+    ))  %>% 
+  opt_table_font(
+    font = list(
+      google_font(name = "Encode Sans")
+    )
+  ) %>%
+  tab_header(
+    subtitle = md("**Calificación de servicios en nuestro país
+(5 máxima calificación)**"),
+    title = toupper("Perfil del turismo de naturaleza.")
+  ) %>%
+  tab_source_note(
+    source_note = md(
+      "**Fuente:** Dirección Nacional de Mercados y Estadística en base a la Encuesta de Turismo Internacional (ETI).")
+  ) %>%
+  tab_stubhead(label = md("**Dimensión**")) %>%
+  tab_style(
+    style = cell_text(weight =  "bold"),
+    locations = cells_row_groups()
+  )
+htmltools::save_html(html = tabla2, file = "tabla2_ETI.html")
+
+webshot::webshot("tabla2_ETI.html", file="out.png", delay=2)
+```
+
+
+```{r}
+tabla3 <- b_gasto_estadia %>% 
+  select(categorias, total_turistas, turismo_naturaleza) %>% 
+  gt(
+    rowname_col = "categorias"
+    ) %>% 
+  cols_label(
+    total_turistas = md("**Total Turistas**") ,             
+    turismo_naturaleza = md("**Turismo de Naturaleza**"),
+  ) %>% 
+  fmt_number(columns = c(2,3), decimals = 1, dec_mark = ",", sep_mark = ".") %>% 
+  cols_align(
+    align = "center",
+    columns = vars(total_turistas, turismo_naturaleza
+    ))  %>% 
+  opt_table_font(
+    font = list(
+      google_font(name = "Encode Sans")
+    )
+  ) %>%
+  tab_header(
+    subtitle = md("**Estadía promedio y Gasto**"),
+    title = toupper("Perfil del turismo de naturaleza.")
+  ) %>%
+  tab_source_note(
+    source_note = md(
+      "**Fuente:** Dirección Nacional de Mercados y Estadística en base a la Encuesta de Turismo Internacional (ETI).")
+  ) %>%
+  tab_stubhead(label = md("**Variable**")) %>%
+  tab_style(
+    style = cell_text(weight =  "bold"),
+    locations = cells_row_groups()
+  )
+htmltools::save_html(html = tabla3, file = "tabla3_ETI.html")
+
+webshot::webshot("tabla3_ETI.html", file="out.png", delay=2)
+```
+
+```{r}
+b_encabezado <- data.frame(anio, turismo_total, turismo_naturaleza) %>% 
+  mutate(porcentaje = turismo_naturaleza / turismo_total)
+
+b_encabezado <- tibble::tribble(
+  ~anio, ~porcentaje, ~turismo_naturaleza, ~turismo_total,
+  2014L,      "0,21",           "601029",    "2828771",
+  2015L,      "0,24",           "628308",    "2640394",
+  2016L,      "0,22",           "556505",    "2579355",
+  2017L,      "0,24",           "631762",    "2692085",
+  2018L,      "0,22",           "702703",    "3163961",
+  2019L,      "0,31",         "1061239",    "3431860"
+  ) %>% 
+  clean_names() %>% 
+  mutate(porcentaje = str_replace(porcentaje, ",", "."),
+         across(.cols = everything(), .fns = as.numeric))
+
+
+tabla4 <- b_encabezado %>% 
+  select(anio, turismo_total, turismo_naturaleza, porcentaje) %>% 
+  gt(
+    rowname_col = "anio"
+    ) %>% 
+  cols_label(
+    turismo_total = md("**Total Turistas**") ,             
+    turismo_naturaleza = md("**Turismo de Naturaleza**"),
+    porcentaje = md("**Participación del turismo de naturaleza respecto al total**")
+  ) %>% 
+  fmt_number(columns = c(2,3), decimals = 0, dec_mark = ",", sep_mark = ".") %>%
+  fmt_percent(columns = 4, decimals = 1, dec_mark = ",", sep_mark = ".") %>% 
+  cols_align(
+    align = "center",
+    columns = vars(turismo_total, turismo_naturaleza, porcentaje
+    ))  %>% 
+  opt_table_font(
+    font = list(
+      google_font(name = "Encode Sans")
+    )
+  ) %>%
+  tab_header(
+    subtitle = md("**Aerop. Intern de  Ezeiza, Aeroparque J. Newbery, Aerop. Intern. de Córdoba, Aerop. Intern de Mendoza, Paso Internacional Cristo Redentor y Terminal de Buquebús en la Ciudad Autónoma de Buenos Aires, Años 2017-2019**"),
+    title = toupper("Participación anual de los turistas que realizaron turismo de naturaleza* durante su visita a la Argentina.")
+    ) %>%
+  tab_source_note(
+    source_note = md(
+      "**Fuente:** Dirección Nacional de Mercados y Estadística en base a la Encuesta de Turismo Internacional (ETI).")
+    ) %>% 
+  tab_source_note(
+    source_note = md(
+      "'* Incluye turismo aventura, actividades de baja dificultad en medios naturales y actividades en la nieve.") 
+  ) %>%
+  tab_source_note(
+    source_note = md(
+      "Notas:  Los datos correspondientes al año 2017 corresponden a Ezeiza y Aeroparque, Terminal de Buquebús en el Puerto de la Ciudad Autónoma de Buenos Aires y Aeropuerto Internacional de Córdoba.")
+  ) %>% 
+  tab_source_note(
+    source_note = md("En el cuestionario 2019 se produjo una modificación en la categoría, se comenzó a consultar por 'Actividades de baja dificultad en medios naturales', mientras que en años anteriores se preguntaba por 'Senderismo, observación de aves, etc. (incluye actividades de baja dificultad en medios naturales)', con la excepción del 2014, año en el que se consultaba por 'Actividades de baja dificultad en medios naturales (pesca, senderismo, visitas a estancias, comunidades originarias, caza, etc.'")
+  ) %>% 
+  tab_stubhead(label = md("**Año**")) %>%
+  tab_style(
+    style = cell_text(weight =  "bold"),
+    locations = cells_row_groups()
+  )
+htmltools::save_html(html = tabla4, file = "tabla4_ETI.html")
+
+webshot::webshot("tabla4_ETI.html", file="out.png", delay=2)
+```
+
+```{r}
+eligen_diversidad_naturaleza <- tibble::tribble(
+  ~anio, ~Total.Turismo, ~Turismo.Naturaleza,
+          2014L,         "0,10",              "0,38",
+          2015L,         "0,11",              "0,39",
+          2016L,         "0,14",              "0,43",
+          2017L,         "0,16",              "0,39",
+          2018L,         "0,14",              "0,40",
+          2019L,         "0,30",              "0,46"
+  ) %>% 
+  clean_names() %>% 
+  mutate_at(vars(contains("turismo")), str_replace, ",", ".") %>% 
+  mutate_at(vars(contains("turismo")), as.numeric)
+
+tabla5 <- eligen_diversidad_naturaleza %>% 
+  select(anio, total_turismo, turismo_naturaleza) %>% 
+  gt(
+    rowname_col = "anio"
+    ) %>% 
+  cols_label(
+    total_turismo = md("**Total Turismo**") ,             
+    turismo_naturaleza = md("__Turismo de Naturaleza*__")
+  ) %>% 
+  fmt_percent(columns = c(2,3), decimals = 1, dec_mark = ",", sep_mark = ".") %>%
+  cols_align(
+    align = "center",
+    columns = vars(total_turismo, turismo_naturaleza
+    ))  %>% 
+  opt_table_font(
+    font = list(
+      google_font(name = "Encode Sans")
+    )
+  ) %>%
+  tab_header(
+    subtitle = md("**Turismo Internacional. Años 2014 - 2019**"),
+    title = toupper(md("Porcentaje de personas que mencionan a la _Diversidad de naturaleza y paisaje_ como factor a tener en cuenta a la hora de elegir viajar a Argentina."))
+    ) %>%
+  tab_source_note(
+    source_note = md(
+      "**Fuente:** Dirección Nacional de Mercados y Estadística en base a la Encuesta de Turismo Internacional (ETI).")
+    ) %>% 
+  tab_source_note(
+    source_note = md(
+      "'* Incluye turismo aventura, actividades de baja dificultad en medios naturales y actividades en la nieve.") 
+  ) %>%
+  tab_source_note(
+    source_note = md(
+      "Nota:  Los datos correspondientes al año 2017 corresponden a Ezeiza y Aeroparque, Terminal de Buquebús en el Puerto de la Ciudad Autónoma de Buenos Aires y Aeropuerto Internacional de Córdoba.")
+    ) %>% 
+  tab_stubhead(label = md("**Año**")) %>%
+  tab_style(
+    style = cell_text(weight =  "bold"),
+    locations = cells_row_groups()
+  )
+htmltools::save_html(html = tabla5, file = "tabla5_ETI.html")
+
+webshot::webshot("tabla5_ETI.html", file="out.png", delay=2)
+```
+
